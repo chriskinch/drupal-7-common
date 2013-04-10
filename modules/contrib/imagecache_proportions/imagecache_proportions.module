@@ -1,0 +1,182 @@
+<?php
+
+/**
+ * @file
+ * CCK formatter for image fields that allows the user to select between 3
+ * different image styles depending on the proportions of the original
+ * image uploaded. One style would be squared for more or less squared images,
+ * another for wider images and the last one for taller images.
+ */
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function imagecache_proportions_field_formatter_info() {
+  return array(
+    'vertical_horizontal' => array(
+      'label' => t('Imagecache proportions'),
+      'field types' => array('image'),
+      'settings' => array(
+        'horizontal_preset' => '',
+        'vertical_preset' => '',
+        'style' => '',
+        'squared_preset' => '',
+        'looseness' => 0,
+        'enable_link' => '',
+        'modal_style' => '',
+      ),
+      'description' => t('Display the image in horizontal if it is more wide than high or in vertical if it is more high than wide.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function imagecache_proportions_field_formatter_settings_form($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $form = array();
+  $options = array(t('None'), );
+  // get a list of all styles for our form options
+  foreach (image_styles() as $id => $style) {
+    $options[$id] = $id;
+  }
+  $form['horizontal_preset'] = array(
+    '#type' => 'select',
+    '#title' => t('Select the horizontal style'),
+    '#description' => t('Style used when the image is wider than higher.'),
+    '#options' => $options,
+    '#default_value' => $settings['horizontal_preset'],
+  );
+  $form['vertical_preset'] = array(
+    '#type' => 'select',
+    '#title' => t('Select the vertical style'),
+    '#description' => t('Style used when the image is higher than wider.'),
+    '#options' => $options,
+    '#default_value' => $settings['vertical_preset'],
+  );
+  $form['squared_preset'] = array(
+    '#type' => 'select',
+    '#title' => t('Select the squared style'),
+    '#description' => t('Style used when the image is equally wider and higher.'),
+    '#options' => $options,
+    '#default_value' => $settings['squared_preset'],
+  );
+  $form['looseness'] = array(
+    '#type' => 'textfield',
+    '#size' => 10,
+    '#title' => t('Select the looseness to consider an image squared'),
+    '#description' => t('Number of pixels that a image can be wider than higher (or viceversa) to be considered squared.'),
+    '#default_value' => $settings['looseness'],
+  );
+
+  $link_options = array(
+    'none' => t('No link'),
+    'entity' => t('Link to the entity (e.g node, taxonomy term...)'),
+    'image' => t('Link to image'),
+  );
+  // If some fancy modal-lightbox module exists, we allow the user to select it.
+  if (module_exists('colorbox')) {
+    $link_options['colorbox'] = t('Modal window using colorbox');
+  }
+  // If some fancy modal-lightbox module exists, we allow the user to select it.
+  if (module_exists('shadowbox')) {
+    $link_options['shadowbox'] = t('Modal window using shadowbox');
+  }
+
+  $form['enable_link'] = array(
+    '#type' => 'select',
+    '#title' => t('Select the type of link of the image'),
+    '#description' => t('Type of link of the image, if image selected and one of the js image popups is enabled (colorbox, shadowbox, lightbox2...) the image will open in a popup.'),
+    '#options' => $link_options,
+    '#default_value' => $settings['enable_link'],
+  );
+
+  if (module_exists('colorbox') || module_exists('shadowbox')) {
+    $form['modal_style'] = array(
+      '#type' => 'select',
+      '#title' => t('Select the modal style'),
+      '#description' => t('Style used when the image is opened in a modal popup.'),
+      '#options' => $options,
+      '#default_value' => $settings['modal_style'],
+    );
+  }
+  return $form;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function imagecache_proportions_field_formatter_settings_summary($field, $instance, $view_mode) {
+  return t('Configure the styles for the image');
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function imagecache_proportions_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  // if there are no images, don't do anything else.
+  if (empty($items)) {
+    return;
+  }
+  
+  $settings = $display['settings'];
+  foreach ($items as $delta => $item) {
+    $extra = array();
+    $theme = 'image_formatter';
+    $size = getimagesize($item['uri']);
+    $proportions = imagecache_proportions_calculate_proportions($size[0], $size[1], $settings['looseness']);
+    switch ($settings['enable_link']) {
+      // Node is still here for legacy purposes.
+      case 'node':
+      case 'entity':
+        $uri = entity_uri($entity_type, $entity);
+        $extra['#image_style'] = $settings[$proportions];
+        break;
+      case 'image':
+        $uri = array(
+          'path' => file_create_url($item['uri']),
+          'options' => array(),
+        );
+        $extra['#image_style'] = $settings[$proportions];
+        break;
+      case 'colorbox':
+        $theme = 'colorbox_image_formatter';
+        $extra['#colorbox_node_style'] = $settings[$proportions];
+        $extra['#colorbox_image_style'] = $settings['modal_style'];
+        break;
+      case 'shadowbox':
+        $theme = 'shadowbox_formatter';
+        $extra['#itemid'] = $delta;
+        $extra['#image_style'] = $settings[$proportions];
+        $extra['#attached']['library'][] = array('shadowbox', 'shadowbox');
+        break;
+    }
+    $element[$delta] = array(
+      '#theme' => $theme,
+      '#item' => $item,
+      '#node' => $entity,
+      '#field' => $field,
+      '#path' => isset($uri) ? $uri : '',
+    );
+    $element[$delta] += $extra;
+  }
+
+  return $element;
+}
+
+/**
+ * Helper function to guess if the image is wider, higher or "squarer" taking a look to the looseness.
+ */
+function imagecache_proportions_calculate_proportions($width, $height, $looseness) {
+  if ($width == $height || abs($width - $height) <= $looseness) {
+    return 'squared_preset';
+  }
+  if ($width > $height) {
+    return 'horizontal_preset';
+  }
+  if ($height > $width) {
+    return 'vertical_preset';
+  }
+}

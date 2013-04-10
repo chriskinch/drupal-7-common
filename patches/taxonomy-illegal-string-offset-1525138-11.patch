@@ -1,0 +1,13 @@
+diff --git a/modules/taxonomy/taxonomy.module b/modules/taxonomy/taxonomy.module
+index ee12be7..a3075e9 100644
+--- a/modules/taxonomy/taxonomy.module
++++ b/modules/taxonomy/taxonomy.module
+@@ -1136,7 +1136,7 @@ class TaxonomyTermController extends DrupalDefaultEntityController {
+     if (isset($conditions['name'])) {
+       $query_conditions = &$query->conditions();
+       foreach ($query_conditions as $key => $condition) {
+-        if ($condition['field'] == 'base.name') {
++        if (is_array($condition) && $condition['field'] == 'base.name') {
+           $query_conditions[$key]['operator'] = 'LIKE';
+           $query_conditions[$key]['value'] = db_like($query_conditions[$key]['value']);
+         }
