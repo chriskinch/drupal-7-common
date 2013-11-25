@@ -3,7 +3,7 @@
 }
 
 #themer-toggle {
+  bottom: auto !important;
   position: absolute !important;
   top: 0 !important;
-  bottom: auto !important;
 }

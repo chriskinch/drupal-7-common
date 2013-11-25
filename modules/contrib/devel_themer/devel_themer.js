@@ -1,24 +1,10 @@
 
 (function ($) {
-  
+
   $(document).ready(function () {
     lastObj = false;
-    thmrSpanified = false;
     strs = Drupal.settings.thmrStrings;
     $('body').addClass("thmr_call").attr("id", "thmr_" + Drupal.settings.page_id);
-    $('[thmr]')
-    .hover(
-      function () {
-        if (themerEnabled && this.parentNode.nodeName != 'BODY' && $(this).attr('thmr_curr') != 1) {
-          $(this).css('outline', 'red solid 1px');
-        }
-      },
-      function () {
-        if (themerEnabled && $(this).attr('thmr_curr') != 1) {
-          $(this).css('outline', 'none');
-        }
-      }
-    );
 
     var themerEnabled = 0;
     var themerToggle = function () {
@@ -30,15 +16,25 @@
         if (lastObj != false) {
           $(lastObj).css('outline', '3px solid #999');
         }
-        if (!thmrSpanified) {
-          spanify();
-        }
+        $('[data-thmr]').hover(
+          function () {
+            if (this.parentNode.nodeName != 'BODY' && $(this).attr('thmr_curr') != 1) {
+              $(this).css('outline', 'red solid 1px');
+            }
+          },
+          function () {
+            if ($(this).attr('thmr_curr') != 1) {
+              $(this).css('outline', 'none');
+            }
+          }
+        );
       }
       else {
         document.onclick = null;
         if (lastObj != false) {
           $(lastObj).css('outline', 'none');
         }
+        $('[data-thmr]').unbind('mouseenter mouseleave');
       }
     };
     $(Drupal.settings.thmr_popup)
@@ -61,7 +57,7 @@
       themerToggle();
     });
   });
-  
+
   /**
    * Known issue: IE does NOT support outline css property.
    * Solution: use another browser
@@ -89,23 +85,6 @@
     return false;
   }
 
-  function spanify() {
-    $('span[thmr]')
-      .each(function () {
-        // make spans around block elements into block elements themselves
-        var kids = $(this).children();
-        for(i=0;i<kids.length;i++) {
-          //console.log(kids[i].style.display);
-          if ($(kids[i]).css('display') != 'inline' && $(kids[i]).is('DIV, P, ADDRESS, BLOCKQUOTE, CENTER, DIR, DL, FIELDSET, FORM, H1, H2, H3, H4, H5, H6, HR, ISINDEX, MENU, NOFRAMES, NOSCRIPT, OL, PRE, TABLE, UL,  DD, DT, FRAMESET, LI, TBODY, TD, TFOOT, TH, THEAD, TR')) {
-            $(this).css('display', 'block');
-          }
-        }
-      });
-    thmrSpanified = true;
-    // turn off the throbber
-    //$('#themer-toggle img.throbber').hide();
-  }
-
   function thmrInPop(obj) {
     //is the element in either the popup box or the toggle div?
     if (obj.id == "themer-popup" || obj.id == "themer-toggle") return true;
@@ -127,16 +106,16 @@
   }
 
   /**
-   * Find all parents with @thmr"
+   * Find all parents with @data-thmr"
    */
   function thmrFindParents(obj) {
     var parents = new Array();
-    if ($(obj).attr('thmr') != undefined) {
+    if ($(obj).attr('data-thmr') != undefined) {
       parents[parents.length] = obj;
     }
     if (obj && obj.parentNode) {
       while ((obj = obj.parentNode) && (obj.nodeType != 9)) {
-        if ($(obj).attr('thmr') != undefined) {
+        if ($(obj).attr('data-thmr') != undefined) {
           parents[parents.length] = obj;
         }
       }
@@ -185,7 +164,7 @@
    */
   function thmrRebuildPopup(objs) {
     // rebuild the popup box
-    var id = objs[0].getAttribute('thmr');
+    var id = objs[0].getAttribute('data-thmr').split(' ').reverse()[0];
     // vars is the settings array element for this theme item
     var vars = Drupal.settings[id];
     // strs is the translatable strings
@@ -196,27 +175,24 @@
     // clear out the initial "click on any element" starter text
     $('#themer-popup div.starter').empty();
 
-    if (type == 'func') {
-      // populate the function name
-      $('#themer-popup dd.key').empty().prepend('<a href="'+ strs.api_site +'api/search/'+ strs.drupal_version +'/'+ key +'" title="'+ strs.drupal_api_docs +'">'+ key +'()</a>');
-      $('#themer-popup dt.key-type').empty().prepend(strs.function_called);
-    }
-    else {
-      // populate the template name
-      $('#themer-popup dd.key').empty().prepend(key);
-      $('#themer-popup dt.key-type').empty().prepend(strs.template_called);
-    }
+    $('#themer-popup dd.key').empty().prepend('<a href="'+ strs.api_site +'api/search/'+ strs.drupal_version +'/'+ vars.search +'" title="'+ strs.drupal_api_docs +'">'+ key + '</a>');
+    $('#themer-popup dt.key-type').empty().prepend((type == 'function') ? strs.function_called : strs.template_called);
 
     // parents
     var parents = '';
-    parents = strs.parents +' <span class="parents">';
-    for(i=1;i<objs.length;i++) {
-      var thmrid = $(objs[i]).attr('thmr')
-      var pvars = Drupal.settings[thmrid];
-      parents += i!=1 ? '&lt; ' : '';
-      // populate the parents
-      // each parent is wrapped with a span containing a 'trig' attribute with the id of the element it represents
-      parents += '<span class="parent" trig="'+ thmrid +'">'+ pvars.name +'</span> ';
+    var parents = strs.parents +' <span class="parents">';
+    var isFirst = true;
+    for (i = 0; i < objs.length; i++) {
+      thmr_ids = objs[i].getAttribute('data-thmr').split(' ').reverse();
+      for (j = (i==0?1:0); j < thmr_ids.length; j++) {
+        var thmrid = thmr_ids[j];
+        var pvars = Drupal.settings[thmrid];
+        parents += (isFirst) ? '' : '&lt; ';
+        // populate the parents
+        // each parent is wrapped with a span containing a 'trig' attribute with the id of the element it represents
+        parents += '<span class="parent" trig="'+ objs[i].getAttribute('data-thmr') +'">'+ pvars.name +'</span> ';
+        isFirst = false;
+      }
     }
     parents += '</span>';
     // stick the parents spans in the #parents div
@@ -224,7 +200,7 @@
     $('#themer-popup span.parent')
       .click(function() {
         var thmr_id = $(this).attr('trig');
-        var thmr_obj = $('[thmr = "' + thmr_id + '"]')[0];
+        var thmr_obj = $('[data-thmr = "' + thmr_id + '"]')[0];
         themerDoIt(thmr_obj);
       })
       .hover(
@@ -248,25 +224,42 @@
     }
     else {
       $('#themer-popup div.duration').empty().prepend('<span class="dt">' + strs.duration + '</span>' + vars.duration + ' ms');
-      $('#themer-popup dd.candidates').empty().prepend(vars.candidates.join('<span class="delimiter"> < </span>'));
-      $('#themer-popup dd.preprocessors').empty().prepend(vars.preprocessors.join('<span class="delimiter"> + </span>'));
-      $('#themer-popup dt.preprocessors-type').empty().prepend(strs.preprocessors);
-      $('#themer-popup dd.processors').empty().prepend(vars.processors.join('<span class="delimiter"> + </span>'));
-      $('#themer-popup dt.processors-type').empty().prepend(strs.processors);
-
-      var uri = Drupal.settings.devel_themer_uri + '/' + id;
-      if (type == 'func') {
+ 
+      if (vars.candidates.length > 0) {
+        $('#themer-popup dd.candidates').show().empty().prepend(vars.candidates.join('<span class="delimiter"> < </span>'));
+  
+        if (type == 'function') {
           // populate the candidates
-          $('#themer-popup dt.candidates-type').empty().prepend(strs.candidate_functions);
+          $('#themer-popup dt.candidates-type').show().empty().prepend(strs.candidate_functions);
+        }
+        else {
+          $('#themer-popup dt.candidates-type').show().empty().prepend(strs.candidate_files);
+        }
       }
       else {
-        $('#themer-popup dt.candidates-type').empty().prepend(strs.candidate_files);
+        $('#themer-popup dt.candidates-type, #themer-popup dd.candidates').hide();
+      }
+
+      if (vars.preprocessors.length > 0) {
+        $('#themer-popup dd.preprocessors').show().empty().prepend(vars.preprocessors.join('<span class="delimiter"> + </span>'));
+        $('#themer-popup dt.preprocessors-type').show().empty().prepend(strs.preprocessors);
+      }
+      else {
+        $('#themer-popup dd.preprocessors, #themer-popup dt.preprocessors-type').hide();
+      }
+
+      if (vars.processors.length > 0) {
+        $('#themer-popup dd.processors').show().empty().prepend(vars.processors.join('<span class="delimiter"> + </span>'));
+        $('#themer-popup dt.processors-type').show().empty().prepend(strs.processors);
+      }
+      else {
+        $('#themer-popup dd.processors, #themer-popup dt.processors-type').hide();
       }
 
       // Use drupal ajax to do what we need 
       vars_div_array = $('div.themer-variables');
       vars_div = vars_div_array[0];
-      
+      var uri = Drupal.settings.devel_themer_uri + '/' + vars['variables'];
       // Programatically using the drupal ajax things is tricky, so cheat.
       dummy_link = $('<a href="'+uri+'" class="use-ajax">Loading Vars</a>');
       $(vars_div).append(dummy_link);

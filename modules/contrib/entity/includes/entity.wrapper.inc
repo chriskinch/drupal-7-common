@@ -662,7 +662,7 @@ class EntityDrupalWrapper extends EntityStructureWrapper {
       $this->bundle = $this->type;
     }
     // Detect the bundle if not set yet and add in properties from the bundle.
-    elseif (!$this->bundle && !empty($this->entityInfo['fieldable']) && $load && $this->dataAvailable()) {
+    elseif (!$this->bundle && $load && $this->dataAvailable()) {
       try {
         if ($entity = $this->value()) {
           list($id, $vid, $bundle) = entity_extract_ids($this->type, $entity);
@@ -728,6 +728,15 @@ class EntityDrupalWrapper extends EntityStructureWrapper {
   }
 
   /**
+   * Returns the entity prepared for rendering.
+   *
+   * @see entity_view()
+   */
+  public function view($view_mode = 'full', $langcode = NULL, $page = NULL) {
+    return entity_view($this->type(), array($this->value()), $view_mode, $langcode, $page);
+  }
+
+  /**
    * Overridden to support setting the entity by either the object or the id.
    */
   public function set($value) {
@@ -788,7 +797,7 @@ class EntityDrupalWrapper extends EntityStructureWrapper {
       try {
         $this->value(array('identifier' => TRUE));
       }
-      catch (EntityMetadataWrapper $e) {
+      catch (EntityMetadataWrapperException $e) {
         // If loading data fails, we cannot determine the concrete entity type.
       }
     }
@@ -1131,11 +1140,11 @@ class EntityMetadataWrapperIterator implements RecursiveIterator {
     return isset($this->keys[$this->position]);
   }
 
-  public function hasChildren () {
+  public function hasChildren() {
     return $this->current() instanceof IteratorAggregate;
   }
 
-  public function getChildren () {
+  public function getChildren() {
     return $this->current()->getIterator();
   }
 }
