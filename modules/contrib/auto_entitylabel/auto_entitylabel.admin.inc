@@ -46,6 +46,7 @@ function auto_entitylabel_settings_form($form, $form_state, $entity_type, $bundl
     $form['auto_entitylabel']['token_help'] = array(
       '#theme' => 'token_tree',
       '#token_types' => array($info['token type']),
+      '#dialog' => TRUE,
     );
   }
 

@@ -9,11 +9,17 @@
  * Implements hook_install().
  */
 function auto_entitylabel_install() {
-  // Make sure hooks are invoked after cck main hooks
+  // Make sure hooks are invoked after cck main hooks.
   db_query("UPDATE {system} SET weight = 5 WHERE name = 'auto_entitylabel'");
 
-  // Migrate settings (permission+variable) from the auto_nodetitle module
+  // Migrate settings (permission+variable) from the auto_nodetitle module.
   _auto_entitylabel_ant_migrate();
+
+  // Notify the user they may want to install token.
+  if (!module_exists('token')) {
+    $t = get_t();
+    drupal_set_message($t('If you install the <a href="!url">Token module</a>, Automatic Entity Label will be able to use token patterns.', array('!url' => 'http://drupal.org/project/token')));
+  }
 }
 
 /**
@@ -47,7 +53,7 @@ function _auto_entitylabel_ant_migrate() {
 
   // Stop migration if no ant_* variables exist.
   $ant_variables_exist = db_select('variable', 'v')->fields('v', array('name'))->condition('name', 'ant_%', 'LIKE')->execute()->rowCount();
-  if(!$ant_variables_exist) {
+  if (!$ant_variables_exist) {
     return;
   }
 
@@ -82,7 +88,7 @@ function _auto_entitylabel_ant_migrate() {
     variable_del('ant_php_node_' . $key);
     variable_del('ant_pattern_node_' . $key);
 
-    // Create list of types using php patterns for warning
+    // Create list of types using php patterns for warning.
     if (variable_get('auto_entitylabel_php_node_' . $key)) {
       $php_types[] = $value->name;
     }
