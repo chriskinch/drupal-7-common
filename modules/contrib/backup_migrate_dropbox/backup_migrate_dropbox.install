@@ -1,19 +1,26 @@
 <?php
 
+/**
+ * @file
+ * Install file for Backup and Migrate DropBox.
+ */
 
+/**
+ * Implements hook_requirements().
+ */
 function backup_migrate_dropbox_requirements($phase) {
   $requirements = array();
   $t = get_t();
   if ($phase == 'install') {
-    if(!file_exists('sites/all/libraries/DropboxUploader/DropboxUploader.php')) {
+    if (!file_exists('sites/all/libraries/dropbox/Dropbox/API.php')) {
       $requirements['dropbox'] = array(
-        'title' => $t('Dropbox Upload'),
+        'title' => $t('BenTheDesigner\'s Dropbox REST API'),
         'value' => $t('Missing'),
         'description' =>  $t(
-          'Dropbox Uploader library is missing, please download Dropbox Uploader from !link and place it at !directory', 
+          'BenTheDesigner\'s Dropbox REST API library is missing, please download it from !link and place it at !directory',
           array(
-            '!link' => 'http://jaka.kubje.org/projects/dropbox-uploader/',
-            '!directory' => 'sites/all/libraries/DropboxUploader',
+            '!link' => 'https://github.com/BenTheDesigner/Dropbox',
+            '!directory' => 'sites/all/libraries/dropbox',
           )
         ),
         'severity' => REQUIREMENT_ERROR,

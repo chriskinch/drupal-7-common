@@ -10,9 +10,9 @@ files[] = semanticviews.theme.inc
 files[] = semanticviews.views_default.inc
 files[] = semanticviews.views.inc
 
-; Information added by drupal.org packaging script on 2013-10-01
-version = "7.x-1.x-dev"
+; Information added by Drupal.org packaging script on 2014-04-16
+version = "7.x-1.0-alpha1"
 core = "7.x"
 project = "semanticviews"
-datestamp = "1380627133"
+datestamp = "1397674758"
 

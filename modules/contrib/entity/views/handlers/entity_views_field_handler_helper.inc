@@ -196,8 +196,14 @@ class EntityFieldHandlerHelper {
     if ($handler->relationship) {
       $current_handler = $handler;
       $view = $current_handler->view;
-      while (!empty($current_handler->relationship) && !empty($view->relationship[$current_handler->relationship])) {
-        $current_handler = $view->relationship[$current_handler->relationship];
+      $relationships = array();
+      // Collect all relationships, keyed by alias.
+      foreach ($view->relationship as $key => $relationship) {
+        $key = $relationship->alias ? $relationship->alias : $key;
+        $relationships[$key] = $relationship;
+      }
+      while (!empty($current_handler->relationship) && !empty($relationships[$current_handler->relationship])) {
+        $current_handler = $relationships[$current_handler->relationship];
         $return = $current_handler->real_field . ($return ? ":$return" : '');
       }
     }
@@ -323,29 +329,29 @@ class EntityFieldHandlerHelper {
     if (!isset($values->_entity_properties)) {
       $values->_entity_properties = array();
     }
-    if (!isset($values->_entity_properties[$handler->relationship]) || !array_key_exists($selector, $values->_entity_properties[$handler->relationship])) {
+    if (!array_key_exists($selector, $values->_entity_properties)) {
       if (!isset($handler->wrappers[$handler->view->row_index])) {
-        $values->_entity_properties[$handler->relationship][$selector] = $default;
+        $values->_entity_properties[$selector] = $default;
       }
       elseif (is_array($handler->wrappers[$handler->view->row_index])) {
-        $values->_entity_properties[$handler->relationship][$selector] = self::extract_list_wrapper_values($handler->wrappers[$handler->view->row_index], $field);
+        $values->_entity_properties[$selector] = self::extract_list_wrapper_values($handler->wrappers[$handler->view->row_index], $field);
       }
       else {
         $wrapper = $handler->wrappers[$handler->view->row_index];
         try {
           if ($field === 'entity object') {
-            $values->_entity_properties[$handler->relationship][$selector] = $wrapper->value();
+            $values->_entity_properties[$selector] = $wrapper->value();
           }
           else {
-            $values->_entity_properties[$handler->relationship][$selector] = isset($wrapper->$field) ? $wrapper->$field->value(array('identifier' => TRUE)) : $default;
+            $values->_entity_properties[$selector] = isset($wrapper->$field) ? $wrapper->$field->value(array('identifier' => TRUE, 'sanitize' => TRUE)) : $default;
           }
         }
         catch (EntityMetadataWrapperException $e) {
-          $values->_entity_properties[$handler->relationship][$selector] = $default;
+          $values->_entity_properties[$selector] = $default;
         }
       }
     }
-    return $values->_entity_properties[$handler->relationship][$selector];
+    return $values->_entity_properties[$selector];
   }
 
   /**
