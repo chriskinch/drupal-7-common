@@ -18,7 +18,7 @@ $flash_url = url($flash_fallback_player, array(
   'query' => array('url' => $captcha_url),
   'external' => TRUE,
 ));
-$switch_verify = t('Switch to image verification');
+$switch_verify = t('Switch to image verification.');
 $instructions = t('Enter only the first letter of each word you hear.  If you are having trouble listening in your browser, you can <a href="@captcha-url" id="mollom_captcha_download" class="swfNext-mollom_captcha_verify">download the audio</a> to listen on your device.', array(
   '@captcha-url' => $captcha_url,
 ));
@@ -102,8 +102,8 @@ $refresh_image_output = theme('image', array(
 
 <span class="mollom-captcha-container">
   <a href="javascript:void(0);" class="mollom-refresh-captcha mollom-refresh-audio"><?php print $refresh_image_output; ?></a>
-  <div class="mollom-captcha-content mollom-audio-captcha">
-    <div class="mollom-audio-catcha-instructions"><?php print $instructions; ?></div>
+  <span class="mollom-captcha-content mollom-audio-captcha">
+    <span class="mollom-audio-catcha-instructions"><?php print $instructions; ?></span>
 
     <!--- HTML5 Audio playback -->
     <audio id="mollom_captcha_audio" controls tabindex="0">
@@ -113,21 +113,21 @@ $refresh_image_output = theme('image', array(
     </audio>
 
     <!-- Fallback for browsers not supporting HTML5 audio or not MP3 format -->
-    <div id="mollom_captcha_fallback">
-      <div id="mollom_captcha_fallback_player"></div>
+    <span id="mollom_captcha_fallback">
+      <span id="mollom_captcha_fallback_player"></span>
       <script>
         var audioTest = document.createElement('audio');
         if (!audioTest.canPlayType || !audioTest.canPlayType('audio/mpeg')) {
           embedFallbackPlayer();
         }
       </script>
-    </div>
+    </span>
 
     <!-- Text to show when neither HTML5 audio or SWFs are supported -->
-    <div id="mollom_captcha_unsupported" style="display:none;">
+    <span id="mollom_captcha_unsupported" class="mollom-hide">
       <p><?php print $unsupported; ?></p>
-    </div>
+    </span>
 
-    <div class="mollom-audio-captcha-switch"><a href="#" class="mollom-switch-captcha mollom-image-captcha swfPrev-mollom_captcha_download" id="mollom_captcha_verify"><?php print $switch_verify; ?></a>.</div>
-  </div>
+    <span class="mollom-audio-captcha-switch"><a href="#" class="mollom-switch-captcha mollom-image-captcha swfPrev-mollom_captcha_download" id="mollom_captcha_verify"><?php print $switch_verify; ?></a></span>
+  </span>
 </span>

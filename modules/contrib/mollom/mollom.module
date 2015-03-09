@@ -298,6 +298,13 @@ function mollom_menu() {
     'file' => 'mollom.flag.inc',
   );
 
+  $items['mollom/pong'] = array(
+    'page callback' => 'mollom_admin_pong_callback',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+    'file' => 'mollom.admin.inc',
+  );
+
   return $items;
 }
 
@@ -1319,6 +1326,11 @@ function mollom_form_get_values(&$form_state, $fields, $mapping) {
   // which have been turned into $exclude_fields above. All fields that were
   // already used for 'post_body' no longer exist in $exclude_fields.
   foreach ($exclude_fields as $field => $property) {
+    // If the postTitle field was not included in the enabled fields, then don't
+    // set it's mapping here.
+    if ($property === 'post_title' && !in_array($field, $fields)) {
+      continue;
+    }
     // Nested elements use a key of 'parent][child', so we need to recurse.
     $parents = explode('][', $field);
     $value = $form_values;
@@ -1343,7 +1355,7 @@ function mollom_form_get_values(&$form_state, $fields, $mapping) {
   if (!empty($mapping['post_id'])) {
     $data['postId'] = $mapping['post_id'];
   }
-  // Post title.
+  // Post title if included in enabled fields for the form.
   if (!empty($mapping['post_title'])) {
     $data['postTitle'] = $mapping['post_title'];
   }
@@ -1417,6 +1429,17 @@ function mollom_form_get_values(&$form_state, $fields, $mapping) {
   // see the actual honeypot value in watchdog log entries.
   if (isset($form_values['mollom']['homepage']) && $form_values['mollom']['homepage'] !== '') {
     $data['honeypot'] = $form_values['mollom']['homepage'];
+  }
+
+  // Add the contextCreated parameter if a callback exists.
+  if (isset($form_state['mollom']['context created callback']) && function_exists($form_state['mollom']['context created callback'])) {
+    if (!empty($mapping['context_id'])) {
+      $context_id_field = $mapping['context_id'];
+      $contextCreated = call_user_func($form_state['mollom']['context created callback'], $mapping['context_id']);
+      if ($contextCreated !== FALSE) {
+        $data['contextCreated'] = $contextCreated;
+      }
+    }
   }
 
   // Ensure that all $data values contain valid UTF-8. Invalid UTF-8 would be
@@ -2494,8 +2517,10 @@ function mollom_form_submit($form, &$form_state) {
  * @param $class
  *   (optional) The name of a Mollom client implementation class to instantiate.
  *   Overrides the 'mollom_class' configuration variable. Debug use only.
+ * @param $force
+ *   (optional) If true, then a new class is always instantiated.
  */
-function mollom($class = NULL) {
+function mollom($class = NULL, $force = FALSE) {
   $instances = &drupal_static(__FUNCTION__, array());
   if (!isset($class)) {
     if (variable_get('mollom_testing_mode', 0)) {
@@ -2507,7 +2532,7 @@ function mollom($class = NULL) {
   }
   // If there is no instance yet or if it is not of the desired class, create a
   // new one.
-  if (!isset($instances[$class]) || !($instances[$class] instanceof $class)) {
+  if ($force || !isset($instances[$class]) || !($instances[$class] instanceof $class)) {
     $instances[$class] = new $class();
   }
   return $instances[$class];
@@ -3633,9 +3658,11 @@ function node_mollom_form_info($form_id) {
     'bypass access' => array('bypass node access'),
     'bundle' => $type->type,
     'moderation callback' => 'node_mollom_form_moderation',
+    'context created callback' => 'node_mollom_context_created',
     'elements' => array(),
     'mapping' => array(
       'author_name' => 'name',
+      'context_id' => 'nid',
     ),
   );
   // @see node_permission()
@@ -3707,6 +3734,23 @@ function node_mollom_entity_report_access($entity = NULL) {
 }
 
 /**
+ * Entity context created callback for nodes.
+ *
+ * @param $id
+ *   The id of the node.
+ */
+function node_mollom_context_created($id = NULL) {
+  if (empty($id)) {
+    return FALSE;
+  }
+  $node = node_load($id);
+  if (empty($node)) {
+    return FALSE;
+  }
+  return $node->created;
+}
+
+/**
  * @} End of "name mollom_node".
  */
 
@@ -3746,6 +3790,7 @@ function comment_mollom_form_info($form_id) {
     'mode' => MOLLOM_MODE_ANALYSIS,
     'bypass access' => array('administer comments'),
     'moderation callback' => 'comment_mollom_form_moderation',
+    'context created callback' => 'node_mollom_context_created',
     'elements' => array(
       'subject' => t('Subject'),
     ),
@@ -3754,6 +3799,7 @@ function comment_mollom_form_info($form_id) {
       'author_name' => 'name',
       'author_mail' => 'mail',
       'author_url' => 'homepage',
+      'context_id' => 'nid',
     ),
   );
   // Retrieve internal type from $form_id.

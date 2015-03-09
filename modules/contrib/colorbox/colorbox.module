@@ -82,7 +82,7 @@ function colorbox_libraries_info() {
     'download url' => 'https://github.com/jackmoore/colorbox/archive/1.x.zip',
     'version arguments' => array(
       'file' => 'jquery.colorbox-min.js',
-      'pattern' => '@(?i:Colorbox) v([0-9\.a-z]+)@',
+      'pattern' => '@(?i:Colorbox)\sv?([0-9\.a-z]+)@',
       'lines' => 5,
     ),
     'files' => array(
@@ -142,7 +142,7 @@ function _colorbox_active() {
     return FALSE;
   }
 
-  // Code from the block_list funtion in block.module.
+  // Code from the block_list function in block.module.
   $path = drupal_get_path_alias($_GET['q']);
   $colorbox_pages = variable_get('colorbox_pages', "admin*\nimagebrowser*\nimg_assist*\nimce*\nnode/add/*\nnode/*/edit\nprint/*\nprintpdf/*\nsystem/ajax\nsystem/ajax/*");
   // Compare with the internal and path alias (if any).
@@ -178,10 +178,10 @@ function _colorbox_doheader() {
       'slideshowSpeed' => variable_get('colorbox_slideshowspeed', 2500),
       'slideshowStart' => variable_get('colorbox_text_start', 'start slideshow'),
       'slideshowStop' => variable_get('colorbox_text_stop', 'stop slideshow'),
-      'current' => variable_get('colorbox_text_current', '{current} of {total}'),
-      'previous' => variable_get('colorbox_text_previous', '« Prev'),
-      'next' => variable_get('colorbox_text_next', 'Next »'),
-      'close' => variable_get('colorbox_text_close', 'Close'),
+      'current' => strip_tags(variable_get('colorbox_text_current', '{current} of {total}')),
+      'previous' => strip_tags(variable_get('colorbox_text_previous', '« Prev')),
+      'next' => strip_tags(variable_get('colorbox_text_next', 'Next »')),
+      'close' => strip_tags(variable_get('colorbox_text_close', 'Close')),
       'overlayClose' => variable_get('colorbox_overlayclose', 1) ? TRUE : FALSE,
       'maxWidth' => variable_get('colorbox_maxwidth', '98%'),
       'maxHeight' => variable_get('colorbox_maxheight', '98%'),
@@ -219,7 +219,9 @@ function _colorbox_doheader() {
 
   // Add and initialise the Colorbox plugin.
   $variant = variable_get('colorbox_compression_type', 'minified');
-  libraries_load('colorbox', $variant);
+  if (module_exists('libraries')) {
+    libraries_load('colorbox', $variant);
+  }
   drupal_add_js($path . '/js/colorbox.js');
 
   // Add JS and CSS based on selected style.
@@ -347,7 +349,7 @@ function colorbox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'select',
     '#default_value' => $settings['colorbox_caption'],
     '#options' => $caption,
-    '#description' => t('Automatic will use the first none empty value of the title, the alt text and the content title.'),
+    '#description' => t('Automatic will use the first non-empty value of the title, the alt text and the content title.'),
   );
   $element['colorbox_caption_custom'] = array(
     '#title' => t('Custom caption'),
