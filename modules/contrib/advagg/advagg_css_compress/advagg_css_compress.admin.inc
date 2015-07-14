@@ -9,6 +9,7 @@
  * Form builder; Configure advagg settings.
  *
  * @ingroup forms
+ *
  * @see system_settings_form()
  */
 function advagg_css_compress_admin_settings_form($form, $form_state) {
@@ -18,15 +19,12 @@ function advagg_css_compress_admin_settings_form($form, $form_state) {
   $form = array();
   if (variable_get('advagg_cache_level', ADVAGG_CACHE_LEVEL) < 0) {
     $form['advagg_devel_msg'] = array(
-      '#markup' => '<p>' . t('The settings below will not have any effect because AdvAgg is currently in <a href="@devel">development mode</a>. Once the cache settings have been set to normal or agressive, CSS minification will take place.', array('@devel' => url($config_path . '/advagg', array('fragment' => 'edit-advagg-cache-level')))) . '</p>',
+      '#markup' => '<p>' . t('The settings below will not have any effect because AdvAgg is currently in <a href="@devel">development mode</a>. Once the cache settings have been set to normal or aggressive, CSS minification will take place.', array('@devel' => url($config_path . '/advagg', array('fragment' => 'edit-advagg-cache-level')))) . '</p>',
     );
   }
 
-  $description = '';
-  $options = array(
-    0 => t('Disabled'),
-    2 => t('YUI'),
-  );
+  list($options, $description) = advagg_css_compress_configuration();
+
   $form['advagg_css_compressor'] = array(
     '#type' => 'radios',
     '#title' => t('File Compression: Select a Compressor'),
@@ -34,26 +32,29 @@ function advagg_css_compress_admin_settings_form($form, $form_state) {
     '#options' => $options,
     '#description' => filter_xss($description),
   );
-  $form['advagg_css_inline_compressor'] = array(
+  $inline_options = $options;
+  unset($inline_options[-1]);
+  $inline_options[0] = t('Disabled');
+  $form['advagg_css_compress_inline'] = array(
     '#type' => 'radios',
     '#title' => t('Inline Compression: Select a Compressor'),
-    '#default_value' => variable_get('advagg_css_inline_compressor', ADVAGG_CSS_INLINE_COMPRESSOR),
-    '#options' => $options,
+    '#default_value' => variable_get('advagg_css_compress_inline', ADVAGG_CSS_COMPRESS_INLINE),
+    '#options' => $inline_options,
     '#description' => filter_xss($description),
   );
-  $form['advagg_css_inline_compress_if_not_cacheable'] = array(
+  $form['advagg_css_compress_inline_if_not_cacheable'] = array(
     '#type' => 'checkbox',
     '#title' => t('Inline Compression: Use even if this page is not cacheable'),
-    '#default_value' => variable_get('advagg_css_inline_compress_if_not_cacheable', ADVAGG_CSS_INLINE_COMPRESS_IF_NOT_CACHEABLE),
+    '#default_value' => variable_get('advagg_css_compress_inline_if_not_cacheable', ADVAGG_CSS_COMPRESS_INLINE_IF_NOT_CACHEABLE),
     '#description' => t('By checking this box, all Inline CSS will be compressed regardless of the state of <a href="@link">drupal_page_is_cacheable()</a>.', array('@link' => 'http://api.drupal.org/api/drupal/includes!bootstrap.inc/function/drupal_page_is_cacheable/7')),
     '#states' => array(
       'disabled' => array(
-        ':input[name="advagg_css_inline_compressor"]' => array('value' => "0"),
+        ':input[name="advagg_css_compress_inline"]' => array('value' => "0"),
       ),
     ),
   );
 
-  $options[-1] = t('Default');
+  $options[ADVAGG_CSS_COMPRESSOR_FILE_SETTINGS] = t('Default');
   ksort($options);
 
   $form['per_file_settings'] = array(
@@ -126,6 +127,9 @@ function advagg_css_compress_admin_settings_form_submit($form, &$form_state) {
       continue;
     }
     $new_settings[substr($key, 36)] = $value;
+
+    // Do not save this field into its own variable.
+    unset($form_state['values'][$key]);
   }
   if (!empty($new_settings) || !empty($file_settings)) {
     if (empty($new_settings)) {
